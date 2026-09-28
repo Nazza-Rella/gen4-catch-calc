@@ -1,0 +1,191 @@
+<title>4世代 捕獲率計算機</title>
+<meta name="description" content="ダイヤモンド・パール・プラチナ・ハートゴールド・ソウルシルバーの捕獲率を計算するツール">
+<meta property="og:title" content="4世代 捕獲率計算機">
+<meta property="og:description" content="ダイヤモンド・パール・プラチナ・ハートゴールド・ソウルシルバーの捕獲率を計算するツール">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nazza-rella.github.io/gen4-catch-calc/">
+<meta property="og:image" content="https://nazza-rella.github.io/gen4-catch-calc/icon.png">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>/*__STYLE__*/</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="brand-ball" aria-hidden="true"></span>
+      <div>
+        <h1>4世代 捕獲率計算機</h1>
+        <p class="brand-sub">DP・プラチナ・HGSS 対応</p>
+      </div>
+    </div>
+    <nav class="games" id="games" aria-label="ソフト"></nav>
+  </header>
+
+  <main class="layout">
+    <section class="stage-col">
+      <div class="screen-frame">
+        <div class="screen" id="screen">
+          <div class="screen-inner" id="screenInner">
+            <canvas id="scene" width="256" height="192"></canvas>
+            <div class="hb-hit" id="hbHit" role="slider" tabindex="0" aria-label="残りHP（ドラッグで変更）" aria-valuemin="1"></div>
+            <p class="msg-text" id="msgText" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
+      <div class="stage-tools">
+        <button class="btn-throw" id="btnThrow" type="button">
+          <img id="throwIcon" alt="" width="24" height="24"> 試しに投げる
+        </button>
+        <span class="tally" id="tally">まだ投げていません</span>
+        <button class="btn-ghost" id="btnTallyReset" type="button">記録をリセット</button>
+        <div class="toggles">
+          <label class="switch"><input type="checkbox" id="optSfx"> 効果音</label>
+          <label class="switch" id="shinyWrap"><input type="checkbox" id="optShiny"> 色違い</label>
+        </div>
+      </div>
+
+      <section class="result" id="result" aria-live="polite">
+        <div class="result-main">
+          <div class="big">
+            <span class="big-label">1回投げて捕まる確率</span>
+            <span class="big-num" id="pct">—</span>
+          </div>
+          <dl class="kpis">
+            <div><dt>平均で必要な数</dt><dd id="kExp">—</dd></div>
+            <div><dt>50%に届く数</dt><dd id="k50">—</dd></div>
+            <div><dt>90%に届く数</dt><dd id="k90">—</dd></div>
+            <div><dt>99%に届く数</dt><dd id="k99">—</dd></div>
+          </dl>
+        </div>
+        <div class="shakes">
+          <div class="shakes-head"><h3>ゆれ方の内訳</h3><span class="muted" id="shakeNote"></span></div>
+          <div class="shake-bar" id="shakeBar"></div>
+          <ul class="shake-legend" id="shakeLegend"></ul>
+        </div>
+        <div class="curve">
+          <div class="shakes-head"><h3>投げた数と捕獲成功率</h3><span class="muted" id="curveNote"></span></div>
+          <div class="curve-wrap"><svg id="curve" viewBox="0 0 560 190" role="img" aria-label="投げた数ごとの累積捕獲確率"></svg></div>
+        </div>
+        <details class="formula" open>
+          <summary>計算式</summary>
+          <div id="formula"></div>
+        </details>
+      </section>
+    </section>
+
+    <section class="panel-col">
+      <div class="panel">
+        <div class="field">
+          <div class="field-head">
+            <label for="monInput">相手のポケモン</label>
+            <label class="switch small" id="freeWrap"><input type="checkbox" id="optFree"> 出現条件を無視する</label>
+          </div>
+          <div class="combo" id="combo">
+            <canvas class="combo-icon" id="monIcon" width="32" height="32" aria-hidden="true"></canvas>
+            <input id="monInput" type="text" autocomplete="off" spellcheck="false" placeholder="名前か図鑑番号で検索（ひらがな可）" role="combobox" aria-expanded="false" aria-controls="monList">
+            <ul class="combo-list" id="monList" role="listbox" hidden></ul>
+          </div>
+          <div class="mon-meta" id="monMeta"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="lbl" id="placeLabel">出会う場所</span><span class="muted" id="placeCount"></span></div>
+          <div class="places" id="places" role="radiogroup" aria-labelledby="placeLabel"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="lbl" id="timeLabel">時間帯</span><span class="muted" id="timeNote"></span></div>
+          <div class="times" id="times" role="radiogroup" aria-labelledby="timeLabel"></div>
+        </div>
+
+        <div class="field grid2">
+          <div>
+            <div class="field-head"><label for="lvRange">レベル</label><output id="lvOut" class="val"></output></div>
+            <input type="range" id="lvRange" min="1" max="100" step="1">
+          </div>
+          <div>
+            <div class="field-head"><label for="ivRange">HPの個体値</label><output id="ivOut" class="val"></output></div>
+            <input type="range" id="ivRange" min="0" max="31" step="1" value="31">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><label for="hpRange">のこりHP</label><output id="hpOut" class="val"></output></div>
+          <input type="range" id="hpRange" min="1" max="100" step="1">
+          <div class="chips" id="hpChips">
+            <button type="button" data-hp="full">まんタン</button>
+            <button type="button" data-hp="half">半分</button>
+            <button type="button" data-hp="red">赤ゲージ</button>
+            <button type="button" data-hp="one">HP1（みねうち）</button>
+          </div>
+          <p class="hint muted" id="hpHint">画面のHPバーをドラッグしても変えられます</p>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="lbl" id="stLabel">じょうたい</span><span class="muted" id="stNote"></span></div>
+          <div class="status-grid" id="statusGrid" role="radiogroup" aria-labelledby="stLabel"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-head"><span class="lbl" id="ballLabel">ボール</span></div>
+          <div class="ball-grid" id="ballGrid" role="radiogroup" aria-labelledby="ballLabel"></div>
+          <p class="ball-why muted" id="ballWhy"></p>
+        </div>
+
+        <div class="field cond" id="condTimer">
+          <div class="field-head"><label for="turnRange">何ターン目に投げるか</label><output id="turnOut" class="val"></output></div>
+          <input type="range" id="turnRange" min="1" max="31" step="1" value="1">
+        </div>
+        <div class="field cond" id="condRepeat">
+          <label class="switch"><input type="checkbox" id="optRepeat"> 図鑑で「つかまえた」になっている</label>
+        </div>
+        <div class="field cond" id="condLead">
+          <div class="field-head"><span class="lbl">先頭のポケモン</span><span class="muted">レベルボール・ラブボール用</span></div>
+          <div class="lead">
+            <div>
+              <div class="field-head"><label for="leadLv">レベル</label><output id="leadLvOut" class="val"></output></div>
+              <input type="range" id="leadLv" min="1" max="100" step="1" value="50">
+            </div>
+            <div>
+              <label class="switch"><input type="checkbox" id="optSame"> 相手と同じ種族</label>
+              <div class="field-head" style="margin-top:6px"><label for="genderSel">性別の組み合わせ</label></div>
+              <select id="genderSel">
+                <option value="diff">相手と性別がちがう</option>
+                <option value="same">相手と性別が同じ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field cond" id="condSafari">
+          <div class="field-head"><span class="lbl" id="safariTitle">サファリの行動</span><span class="muted" id="safariFactor"></span></div>
+          <div class="saf-meters">
+            <div class="meter"><span class="m-k">捕まえやすさ</span><div class="m-bar"><i id="mCatch"></i></div><b id="mCatchV"></b></div>
+            <div class="meter"><span class="m-k">逃げる確率</span><div class="m-bar flee"><i id="mFlee"></i></div><b id="mFleeV"></b></div>
+          </div>
+          <div class="saf-acts" id="safariBtns"></div>
+          <ol class="saf-log" id="safariLog"></ol>
+          <div class="saf-best">
+            <div class="sb-top">
+              <div>
+                <span class="sb-k">最善の動きで捕まえる確率</span>
+                <span class="sb-num" id="sbNum">—</span>
+                <span class="sb-sub" id="sbSub"></span>
+              </div>
+              <label class="sb-balls" for="sbBalls">のこりボール <output id="sbBallsOut">30</output>
+                <input type="range" id="sbBalls" min="1" max="30" value="30">
+              </label>
+            </div>
+            <ol class="sb-path" id="sbPath"></ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>/*__DATA__*/</script>
+<script>/*__APP__*/</script>
